@@ -56,7 +56,7 @@ class DataConn:
 
     def upload_data(self, data: pd.DataFrame, table: str):
         if self.db_engine is None:
-            logging.warn("Execute it before")
+            logging.warning("Execute it before")
             self.get_conn()
 
         try:
@@ -79,5 +79,4 @@ class DataConn:
             logging.info("Connection to Redshift closed.")
         else:
             logging.warning("No active connection to close.")
-
 

@@ -2,8 +2,10 @@
 import os
 import logging
 from dotenv import load_dotenv
-from modules import api_bcra , transform_data , DataConn
-
+# from modules import api_bcra , transform_data , DataConn
+from modules.api_con import api_bcra 
+from modules.transform_data import transform_data 
+from modules.data_con import  DataConn
 
 logging.basicConfig(
     filename='app.log',

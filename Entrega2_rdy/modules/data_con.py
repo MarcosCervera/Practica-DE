@@ -1,14 +1,13 @@
-import yfinance as yf
 import pandas as pd
 import logging
 
-from io import StringIO
+
 from sqlalchemy import create_engine
 
 logging.basicConfig(
     filename='app.log',
     filemode='a',
-    format='%(name)s - %(levelname)s - %(message)s',
+    format='%(asctime)s ::DataConnectionModule-> %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO)
     
 class DataConn:
@@ -38,8 +37,28 @@ class DataConn:
         except Exception as e:
             logging.error(f"Failed to create connection: {e}")
             raise
+    
+    def check_table_exists(self, table_name:str) -> bool:
+        with self.db_engine.connect() as connection:
+            cursor = connection.cursor
+            query_checker = f"""
+                SELECT 1 FROM information_schema.tables 
+                WHERE  table_schema = 'andru_ocatorres_coderhouse'
+                AND    table_name   = '{table_name}';              
+            """
+            cursor.execute(query_checker)
+            
+            if not cursor.fetchone():
+                logging.error(f"No {table_name} has been created")
+                raise ValueError(f"No {table_name} has been created")
+
+            logging.info(f"{table_name} exists")
 
     def upload_data(self, data: pd.DataFrame, table: str):
+        if self.db_engine is None:
+            logging.warning("Execute it before")
+            self.get_conn()
+
         try:
             data.to_sql(
                 table,
@@ -51,7 +70,7 @@ class DataConn:
 
             logging.info(f"Data from the DataFrame has been uploaded to the {self.schema}.{table} table in Redshift.")
         except Exception as e:
-            logging.error(f"Failed to upload data to {self.schema}.{table}: {e}")
+            logging.error(f"Failed to upload data to {self.schema}.{table}:\n{e}")
             raise
 
     def close_conn(self):
@@ -61,44 +80,3 @@ class DataConn:
         else:
             logging.warning("No active connection to close.")
 
-
-
-
-class DataManager:
-
-    def __init__(self,company: str):
-        try:
-            self.manager = yf.Ticker(company)
-        except  Exception as e:
-            logging.error(e)
-
-    def get_data(self):
-        try:
-            logging.info("Creacion de data")
-            return self.manager.income_stmt
-        except Exception as e:
-            logging.error(e)
-        finally:
-            logging.warn("Check the data format")
-
-    def data_transform(self):
-        try:
-            data = self.get_data()
-            logging.info("rename columns")
-            data = data.iloc[:,:4]
-            data.columns =["stock_actions","revenue","value","avg_data"]
-            logging.info("change index")
-            data = data.rename_axis('specific_area').reset_index()
-            logging.info("add date to stage the data")
-            data["date_to_stage"] = self.get_data().columns[0].date()
-            logging.info("save the data")
-            data = data.fillna(0)
-            buffer = StringIO()
-            data.info(buf=buffer)
-            s = buffer.getvalue()
-            logging.info(s)
-            
-            return data
-        
-        except Exception as e:
-            logging.error(e)

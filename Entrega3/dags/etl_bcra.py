@@ -19,22 +19,6 @@ from psycopg2.extras import execute_values
 
 load_dotenv()  # take environment variables from .env.
 
-# argumentos por defecto para el DAG
-default_args = {
-    'owner': 'marcos',
-    'start_date': datetime(2024,6,29),
-    'retries':5,
-    'retry_delay': timedelta(minutes=5)
-}
-
-BC_dag = DAG(
-    dag_id='etl_bcra',
-    default_args=default_args,
-    description='Agrega data de forma diaria',
-    schedule_interval="@daily",
-    catchup=False
-)
-
 dag_path = os.getcwd() 
 
 ### Descarga base de Api ###
@@ -107,7 +91,7 @@ redshift_conn = {
     'pwd': pwd
 }
 
-def conexion_BD():
+def conexion_redshift():
     url="data-engineer-cluster.cyhh5bfevlmn.us-east-1.redshift.amazonaws.com"
     try:
         conn = psycopg2.connect(
@@ -153,13 +137,29 @@ def cargar_data():
     #df.to_sql('mining_data', engine, index=False, if_exists='append')  
 
 
+# argumentos por defecto para el DAG
+default_args = {
+    'owner': 'marcos',
+    'start_date': datetime(2024,6,29),
+    'retries':5,
+    'retry_delay': timedelta(minutes=5)
+}
 
-# Tareas
-##1. Extraccion
+BC_dag = DAG(
+    dag_id='etl_bcra',
+    default_args=default_args,
+    description='Agrega data de forma diaria',
+    schedule_interval="@daily",
+    catchup=False
+)
+
+
+### Tareas ###
+#1. Extraccion
 task_1 = PythonOperator(
     task_id='extraer_data',
     python_callable=extraer_data,
-    op_args=["{{ ds }} {{ execution_date.hour }}"],
+    #op_args=["{{ ds }} {{ execution_date.hour }}"],
     dag=BC_dag,
 )
 
@@ -167,7 +167,7 @@ task_1 = PythonOperator(
 task_2 = PythonOperator(
     task_id='transformar_data',
     python_callable=transformar_data,
-    op_args=["{{ ds }} {{ execution_date.hour }}"],
+    #op_args=["{{ ds }} {{ execution_date.hour }}"],
     dag=BC_dag,
 )
 
@@ -176,7 +176,7 @@ task_2 = PythonOperator(
 task_31= PythonOperator(
     task_id="conexion_BD",
     python_callable=conexion_redshift,
-    op_args=["{{ ds }} {{ execution_date.hour }}"],
+    #op_args=["{{ ds }} {{ execution_date.hour }}"],
     dag=BC_dag
 )
 
@@ -184,7 +184,7 @@ task_31= PythonOperator(
 task_32 = PythonOperator(
     task_id='cargar_data',
     python_callable=cargar_data,
-    op_args=["{{ ds }} {{ execution_date.hour }}"],
+    #op_args=["{{ ds }} {{ execution_date.hour }}"],
     dag=BC_dag,
 )
 
